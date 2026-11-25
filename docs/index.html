@@ -3,179 +3,174 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MergeProof: check a merged PDF against its CSV</title>
-  <meta name="description" content="MergeProof is a free, open-source command-line beta that checks the text of a variable-data PDF against the CSV that supplied the merge, page by page, on your own machine.">
+  <meta name="theme-color" content="#f6f8fc">
+  <meta name="description" content="MergeProof checks the text in a final variable-data PDF against the source CSV. Find wrong fields, duplicates, and missing records before printing. Free, open source, and local.">
+  <meta property="og:title" content="MergeProof · Proof the merge before it prints">
+  <meta property="og:description" content="Check a variable-data PDF against its source CSV, page by page, on your own machine.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://shulgi.github.io/mergeproof/">
+  <link rel="canonical" href="https://shulgi.github.io/mergeproof/">
   <link rel="stylesheet" href="style.css">
+  <title>MergeProof · Proof the merge before it prints</title>
+  <script src="sample-data.js" defer></script>
+  <script src="site.js" defer></script>
 </head>
 <body>
-  <header class="hero">
-    <div class="wrap">
-      <p class="badge">Public beta · MIT licensed · runs locally</p>
-      <h1>MergeProof</h1>
-      <p class="lede">Check the text of a merged variable-data PDF against the CSV that supplied it, record by record. You get a list of physical pages to look at.</p>
-      <p class="download">
-        <a class="button" href="source.zip" download>Download source.zip</a>
-        <span class="download-note">Unpacks into a folder called <code>source</code>. See the <a href="#quickstart">quickstart</a> to run it.</span>
-      </p>
-      <nav class="jump" aria-label="On this page">
-        <a href="#example">Example</a>
-        <a href="#quickstart">Quickstart</a>
-        <a href="#own-job">Your own job</a>
-        <a href="#scope">What the beta checks</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top">
+    <div class="shell top-inner">
+      <a class="brand" href="./" aria-label="MergeProof home"><span class="brand-icon" aria-hidden="true"></span>MergeProof</a>
+      <nav aria-label="Main navigation">
+        <a href="#demo">Demo</a>
+        <a href="#install">Install</a>
+        <a href="https://github.com/shulgi/mergeproof#running-it-on-your-own-job">Docs</a>
       </nav>
+      <div class="top-actions">
+        <button class="theme" id="theme" type="button" hidden>Dark mode</button>
+        <a class="button button-small button-quiet" href="https://github.com/shulgi/mergeproof">GitHub</a>
+      </div>
     </div>
   </header>
 
-  <main>
-    <section class="wrap">
-      <h2>The job</h2>
-      <p>You ran a data merge (statements, letters, badges, certificates) and exported the final PDF. Before it goes to print, someone has to confirm that every row of the CSV made it onto exactly one page, and that the names, addresses and amounts printed on that page are the ones in the data.</p>
-      <p>MergeProof does that comparison from the two files you already have: the PDF with live text and the CSV. It reads the record ID on each page, joins it to the matching CSV row and compares the fields you choose. It does not need the layout file or the application that produced it.</p>
-      <ul class="checks">
-        <li><strong>Wrong or missing field values</strong>, with the expected and found text</li>
-        <li><strong>Duplicate IDs</strong> printed on more than one page</li>
-        <li><strong>Unknown IDs</strong> printed but not in the CSV</li>
-        <li><strong>Missing IDs</strong>: CSV rows that never appeared on a valid page</li>
-        <li><strong>Pages it could not verify</strong>: no extractable text, a missing boundary, or two records on one page</li>
-      </ul>
-      <p>No account, upload, AI model or telemetry is involved. Your files stay on your computer and are only read.</p>
-    </section>
-
-    <section class="wrap" id="example">
-      <h2>A short real example</h2>
-      <p>This is the synthetic sample that ships with MergeProof. Every name and amount is invented. The CSV row for member <code>00042</code>:</p>
-<pre class="file"><span class="file-name">records.csv (excerpt)</span>Member ID,Full Name,Mailing Address,Postcode,Plan,Balance,Segment
-00042,Ines Ferreira-Okafor,"Rua das Flores 12
-3º Esq.",1200-195,"Studio, Annual","€1,250.00",Renewal</pre>
-      <p>Page 2 of the broken sample proof, as MergeProof reads it from the PDF. The template prints an ID line and an end marker around the record:</p>
-<pre class="file"><span class="file-name">proof-broken.pdf, page 2</span>Northlight Members' Studio
-Annual statement 2026
-
-Member ID: 00042
-Name: Ines Ferreira-Okafor
-Address: Rua das Flores 12
-3º Esq.
-Postcode: 1200-195
-Plan: Studio, Annual
-Balance: €1,205.00
-END OF RECORD</pre>
-      <p>A small map tells MergeProof which printed labels go with which CSV columns:</p>
-<pre class="file"><span class="file-name">map.json</span>{
-  "idColumn": "Member ID",
-  "idLabel": "Member ID:",
-  "endMarker": "END OF RECORD",
-  "fields": [
-    { "label": "Name:", "column": "Full Name" },
-    { "label": "Address:", "column": "Mailing Address" },
-    { "label": "Postcode:", "column": "Postcode" },
-    { "label": "Plan:", "column": "Plan" },
-    { "label": "Balance:", "column": "Balance" }
-  ]
-}</pre>
-      <p>Running the proof on the whole nine-page broken sample prints this report and exits with status 1:</p>
-<pre class="terminal"><span class="prompt">$ node bin/mergeproof.js --csv samples/records.csv --map samples/map.json --pdf samples/proof-broken.pdf</span>
-MergeProof FAIL: 10 findings
-  9 pages, 6 CSV rows, 0 records verified (5 fields each)
-
-Page issues (3)
-  page 7: unreadable - no extractable text (blank page, scanned image or outlined text)
-  page 8: invalid boundary - end marker "END OF RECORD" not found after "Member ID:" (ID "KX 9")
-  page 9: ambiguous - record start label "Member ID:" appears 2 times (IDs "Ö-17", "a-0310")
-
-Field mismatches (2)
-  page 2, ID "00042", Balance: expected "€1,250.00", found "€1,205.00"
-  page 3, ID "00107", Postcode: expected "114 51", but label "Postcode:" is not in the record block
-
-Duplicate PDF IDs (1)
-  ID "A-0310" on pages 4, 5
-
-Unknown PDF IDs (1)
-  page 6: ID "Z-999" is not in the CSV
-
-Missing CSV IDs (3)
-  ID "a-0310" (CSV data row 4) was not verified on any page; seen on unverified page 9
-  ID "KX 9" (CSV data row 5) was not verified on any page; seen on unverified page 8
-  ID "Ö-17" (CSV data row 6) was not verified on any page; seen on unverified page 9
-
-Pages without a record (not findings): 1</pre>
-      <p>The clean sample has the same six records in a different order. It passes with exit status 0:</p>
-<pre class="terminal">MergeProof PASS: 0 findings
-  7 pages, 6 CSV rows, 6 records verified (5 fields each)
-
-Pages without a record (not findings): 1</pre>
-      <p>Add <code>--json</code> to get the same findings as one JSON object, for scripts and agents. Exit status 0 means the text matched. It is not an approval to print.</p>
-    </section>
-
-    <section class="wrap" id="quickstart">
-      <h2>Local quickstart</h2>
-      <p>You need macOS or Linux, <strong>Node.js 22 or newer</strong>, and Poppler's <code>pdftotext</code>:</p>
-<pre class="terminal"><span class="prompt"># macOS (Homebrew)</span>
-brew install poppler
-<span class="prompt"># Debian / Ubuntu</span>
-sudo apt-get install poppler-utils</pre>
-      <p>MergeProof is installed from source, not from npm. Download the source archive:</p>
-      <p class="download">
-        <a class="button" href="source.zip" download>Download source.zip</a>
-      </p>
-      <p>Unpack it. You get a folder called <code>source</code> that contains the README and everything else. Run all the commands below inside that folder. If you have a Git checkout instead, run them in the checkout folder.</p>
-<pre class="terminal">cd source               <span class="prompt"># or your Git checkout</span>
-npm ci                  <span class="prompt"># installs the one dependency, csv-parse</span>
-npm run sample          <span class="prompt"># writes the synthetic samples to samples/</span>
-npm run proof:clean     <span class="prompt"># exit 0: PASS</span>
-npm run proof:broken    <span class="prompt"># exit 1: the 10 findings above</span></pre>
-      <p>npm prints extra error lines after <code>proof:broken</code> because the exit status is 1. That is expected.</p>
-    </section>
-
-    <section class="wrap" id="own-job">
-      <h2>Running it on your own job</h2>
-      <ol class="steps">
-        <li><strong>Prepare the template.</strong> Put one record on each page, a visible ID line such as <code>Member ID: 00042</code>, a field label at the start of each line you want checked, and a closing line with only an end marker such as <code>END OF RECORD</code>.</li>
-        <li><strong>Export the PDF with live text.</strong> Outlined or scanned text cannot be read.</li>
-        <li><strong>See what MergeProof reads.</strong> <code>node bin/mergeproof.js --show-text --pdf "final merged.pdf"</code> lists each page's extracted text, so you can copy your labels exactly.</li>
-        <li><strong>Write the map and check it.</strong> Add <code>--map map.json</code> to the same command. Label lines are tagged, and each page shows whether a record was found.</li>
-        <li><strong>Run the proof.</strong> <code>node bin/mergeproof.js --csv data.csv --map map.json --pdf "final merged.pdf"</code></li>
-      </ol>
-      <p>If none of your labels are found on any page, the report ends with a hint telling you so, rather than just listing every row as missing.</p>
-    </section>
-
-    <section class="wrap" id="scope">
-      <h2>What the beta supports</h2>
-      <div class="columns">
-        <div class="card yes">
-          <h3>Supported</h3>
-          <ul>
-            <li>One CSV and one PDF with native (selectable) text per run</li>
-            <li>At most one record per page, opened by an ID label and closed by a standalone end-marker line</li>
-            <li>Field values inline or on following lines, including multiline addresses</li>
-            <li>UTF-8 CSV with or without a BOM, quoted commas, doubled quotes and line breaks</li>
-            <li>Exact IDs: leading zeros, case and interior spaces all count</li>
-            <li>Unicode NFC normalization and whitespace collapsing for field values, with no fuzzy matching</li>
-            <li>Text and JSON reports, and exit codes 0 (clean), 1 (findings) and 2 (unusable input)</li>
-            <li>macOS and Linux with Node.js 22+ and Poppler</li>
-          </ul>
+  <main id="main">
+    <section class="hero shell" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <a class="release-mark" href="https://github.com/shulgi/mergeproof/commit/d8bb3b8c38faa75ae2dbbbd766278eed9e5b2bdc"><span></span>Open-source beta 0.2.0-beta.1</a>
+        <h1 id="hero-title">Proof the merge <em>before it prints.</em></h1>
+        <p>Match a variable-data PDF to the CSV that supplied it. Find missing records, duplicates, and wrong text by page before sending a job to print.</p>
+        <div class="actions">
+          <a class="button button-primary" href="#demo">Explore the demo</a>
+          <a class="button button-quiet" href="source.zip" download="mergeproof-source.zip">Download source</a>
         </div>
-        <div class="card no">
-          <h3>Not checked</h3>
-          <ul>
-            <li>Fonts and font substitution</li>
-            <li>Visual design, layout, colour and images</li>
-            <li>Overset, clipped or overlapping text</li>
-            <li>Barcodes and QR codes</li>
-            <li>Scanned pages or OCR</li>
-            <li>More than one record per page</li>
-            <li>Arbitrary templates without an ID label and end marker</li>
-            <li>Windows</li>
-          </ul>
+        <p class="quiet-note">Runs locally on macOS and Linux with Node.js and Poppler.</p>
+      </div>
+
+      <div id="demo" class="demo" aria-labelledby="demo-title">
+        <div class="demo-header">
+          <div><p class="eyebrow">SAMPLE JOB</p><h2 id="demo-title">Member statements</h2></div>
+          <span class="local-label">Synthetic data</span>
+        </div>
+        <div class="demo-toolbar">
+          <div class="segments" id="sample-control" role="group" aria-label="Sample PDF" hidden>
+            <button type="button" data-sample="broken" aria-pressed="true">With errors</button>
+            <button type="button" data-sample="clean" aria-pressed="false">Clean proof</button>
+          </div>
+          <span class="status-pill" id="sample-status" data-state="fail">10 findings · Exit 1</span>
+        </div>
+        <div class="demo-output">
+          <div class="output-toolbar">
+            <div class="views" id="view-control" role="group" aria-label="Output view" hidden>
+              <button type="button" data-view="report" aria-pressed="true">Report</button>
+              <button type="button" data-view="terminal" aria-pressed="false">Terminal</button>
+              <button type="button" data-view="json" aria-pressed="false">JSON</button>
+            </div>
+            <button class="copy secondary-copy" id="copy-output" type="button" hidden>Copy output</button>
+          </div>
+          <div id="sample-content">
+            <div class="report-summary"><span>9 PDF pages</span><span>6 source rows</span><span>0 verified</span></div>
+            <article class="finding">
+              <div class="finding-header"><span>Page 2 · Record 00042</span><span>Field mismatch</span></div>
+              <h3>Balance</h3>
+              <div class="values">
+                <div><span>Expected from CSV</span><strong>€1,250.00</strong></div>
+                <div><span>Found on PDF</span><strong class="incorrect">€1,205.00</strong></div>
+              </div>
+            </article>
+            <p class="other-findings">9 more findings across missing fields, duplicate and unknown records, and unreadable pages.</p>
+          </div>
+        </div>
+        <p class="demo-footer">Recorded from the real CLI using the sample files included in the repository.</p>
+        <p id="demo-announcement" class="screen-reader" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="workflow band" aria-labelledby="workflow-title">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">THE WORKFLOW</p>
+          <h2 id="workflow-title">Three inputs. One proof.</h2>
+          <p>Use files you already own and a small JSON map that connects each printed label to a source column.</p>
+        </div>
+        <div class="workflow-grid">
+          <article><div class="file-tag">.CSV</div><h3>Source rows</h3><p>Keep the original CSV with a unique ID for every record. Leading zeros and case are preserved.</p></article>
+          <article><div class="file-tag">.PDF</div><h3>Final proof</h3><p>Export with selectable text. Put one record on each page with a visible ID and a standalone end marker.</p></article>
+          <article><div class="file-tag">.JSON</div><h3>Field map</h3><p>Pair printed labels with CSV columns. Run <code>--show-text</code> to see the labels MergeProof reads.</p></article>
         </div>
       </div>
-      <p class="note">MergeProof checks text, so keep your visual proof. An independent clean-checkout test on macOS (Apple silicon) with Poppler 26.04 ran all 101 tests on Node.js 22.23.5 and 26.0.0, and they passed on both. That testing used the synthetic samples. Linux and real production exports have not been verified yet. If font or layout checks would decide whether you use it, tell us which ones in a GitHub issue. That feedback shapes what comes next.</p>
+    </section>
+
+    <section id="install" class="install shell" aria-labelledby="install-title">
+      <div class="install-intro section-heading">
+        <p class="eyebrow">LOCAL QUICKSTART</p>
+        <h2 id="install-title">Run your first proof.</h2>
+        <p>Install Node.js 22 or newer and Poppler, then clone the repo and run the sample. Once the prerequisites are installed, the quickstart takes under two minutes.</p>
+        <div class="actions">
+          <a href="https://github.com/shulgi/mergeproof#readme">Read the full documentation</a>
+          <a href="https://github.com/shulgi/mergeproof/issues/new">Report an issue</a>
+        </div>
+      </div>
+      <div class="install-box">
+        <div class="command-block">
+          <div class="command-header">
+            <h3>Install Poppler</h3>
+            <div id="system-control" class="system-control" hidden>
+              <label class="screen-reader" for="system">Operating system</label>
+              <select id="system">
+                <option value="mac">macOS</option>
+                <option value="debian">Debian / Ubuntu</option>
+                <option value="fedora">Fedora</option>
+              </select>
+            </div>
+          </div>
+          <div class="command-line"><pre><code id="system-command">brew install poppler</code></pre><button class="copy" type="button" data-copy="system-command" hidden>Copy<span class="screen-reader"> Poppler command</span></button></div>
+          <noscript><p class="fallback">On Debian or Ubuntu use <code>sudo apt-get install poppler-utils</code>. On Fedora use <code>sudo dnf install poppler-utils</code>.</p></noscript>
+        </div>
+        <div class="command-block">
+          <div class="command-header"><h3>Clone and run the sample</h3></div>
+          <div class="command-line"><pre><code id="clone-command">git clone https://github.com/shulgi/mergeproof.git
+cd mergeproof
+npm ci
+npm run sample
+npm run proof:clean</code></pre><button class="copy" type="button" data-copy="clone-command" hidden>Copy<span class="screen-reader"> quickstart commands</span></button></div>
+          <p class="command-note">Expect <code>PASS: 0 findings</code>. Try <code>npm run proof:broken</code> to see a failing proof. You can also <a href="source.zip" download="mergeproof-source.zip">download the ZIP</a> and run the commands from the extracted <code>source</code> folder.</p>
+        </div>
+        <p id="copy-feedback" class="screen-reader" role="status"></p>
+      </div>
+    </section>
+
+    <section id="faq" class="band" aria-labelledby="faq-title">
+      <div class="shell faq">
+        <div class="section-heading"><p class="eyebrow">BEFORE YOU PRINT</p><h2 id="faq-title">Know what a pass means.</h2></div>
+        <div class="faq-list">
+          <details open>
+            <summary>What does MergeProof check?</summary>
+            <p>It compares the text for each mapped field against the source CSV. It reports duplicate IDs, missing or unknown records, and pages it cannot verify. Fonts, layout, colour, images, barcodes, and scanned text still need a separate visual proof.</p>
+          </details>
+          <details>
+            <summary>Does it need InDesign?</summary>
+            <p>No. Use any producer that saves a native-text PDF with the supported record layout. MergeProof works from the PDF, CSV, and field map.</p>
+          </details>
+          <details>
+            <summary>Can I run it in a script or agent workflow?</summary>
+            <p>Yes. Use <code>--json</code> for machine-readable results. Exit 0 means a clean text check, exit 1 means findings, and exit 2 means unusable inputs or invocation. Keep visual approval with a person.</p>
+          </details>
+          <details>
+            <summary>Are my files uploaded?</summary>
+            <p>The CLI reads your files on your machine. This page only shows captured sample results and has no upload controls or analytics.</p>
+          </details>
+        </div>
+      </div>
     </section>
   </main>
 
-  <footer>
-    <div class="wrap">
-      <p>MergeProof is open source under the MIT License. This page loads no scripts, fonts or trackers.</p>
-    </div>
+  <footer class="shell footer">
+    <div><a class="brand" href="./"><span class="brand-icon" aria-hidden="true"></span>MergeProof</a><p>Text reconciliation for variable-data print.</p></div>
+    <nav aria-label="Project links">
+      <a href="https://github.com/shulgi/mergeproof">Repository</a>
+      <a href="https://github.com/shulgi/mergeproof/issues">Issues</a>
+      <a href="https://github.com/shulgi/mergeproof/blob/main/CONTRIBUTING.md">Contribute</a>
+      <a href="https://github.com/shulgi/mergeproof/blob/main/LICENSE">MIT license</a>
+    </nav>
   </footer>
 </body>
 </html>

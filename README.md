@@ -1,5 +1,7 @@
 # MergeProof
 
+[Project website and interactive sample](https://shulgi.github.io/mergeproof/)
+
 MergeProof checks a merged PDF that has native text against the CSV that supplied the merge. On each page it finds the record ID, joins it to the matching CSV row, and compares the printed fields you choose. It reports physical page numbers for every wrong or absent field, every duplicate, unknown or missing ID, and every page it could not verify.
 
 Everything runs on your machine. There is no account, upload, model, web service or telemetry, and input files are only read.
